@@ -37,6 +37,15 @@ class Database:
             self.conn.commit()
         except sqlite3.Error as e:
             print(f"Error adding item {e}")
+    
+    def add_item(self,ingredient):
+        try:
+            self.conn = sqlite3.connect(self.db_name)
+            self.cursor = self.conn.cursor()
+            self.cursor.execute('''INSERT INTO fridge (name,quantity,unit,expiry_date) VALUES (?,?,?,?)''',(ingredient.name,ingredient.quantity,ingredient.unit,ingredient.expiry_date))
+            self.conn.commit()
+        except sqlite3.Error as e:
+            print(f"Error adding item {e}")
 
 
     def close(self):
