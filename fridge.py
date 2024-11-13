@@ -13,3 +13,9 @@ class Fridge:
     def cook(self,recipe):
         for i in recipe.ingredients:
             self.db.delete_item(i)
+    
+    def add_recipe(self,recipe):
+        self.db.add_recipe(recipe)
+
+    def delete_recipe(self,recipe):
+        self.db.delete_recipe(recipe)

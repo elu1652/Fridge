@@ -18,10 +18,33 @@ class Database:
                                 unit TEXT NOT NULL,
                                 expiry_date TEXT NOT NULL
                             )''')
+            self.cursor.execute('''CREATE TABLE IF NOT EXISTS recipes (
+                                id INTEGER PRIMARY KEY,
+                                name TEXT NOT NULL
+                            )''')
+            self.cursor.execute('''CREATE TABLE IF NOT EXISTS ingredients (
+                                id INTEGER PRIMARY KEY,
+                                recipe_id INTEGER,
+                                ingredient_name TEXT NOT NULL,
+                                quantity REAL NOT NULL,
+                                unit TEXT NOT NULL,
+                                FOREIGN KEY (recipe_id) REFERENCES recipes (id) ON DELETE CASCADE
+                            )''')
             self.conn.commit()
         except sqlite3.Error as e:
             print(f"Error creating table {e}")
 
+    def add_recipe(self,recipe):
+        try:
+            self.conn = sqlite3.connect(self.db_name)
+            self.cursor = self.conn.cursor()
+            self.cursor.execute('''INSERT INTO recipes (name) VALUES (?)''',(recipe.name,))
+            recipe_id = self.cursor.lastrowid
+            for i in recipe.ingredients:
+                self.cursor.execute('''INSERT INTO ingredients (recipe_id,ingredient_name,quantity,unit) VALUES (?,?,?,?)''',(recipe_id,i.name,i.quantity,i.unit))
+            self.conn.commit()
+        except sqlite3.Error as e:
+            print(f"Error adding recipe {e}")
 
     def execute_query(self, query, params=None):
         with sqlite3.connect(self.db_name) as conn:
@@ -42,7 +65,13 @@ class Database:
         try:
             self.conn = sqlite3.connect(self.db_name)
             self.cursor = self.conn.cursor()
-            self.cursor.execute('''INSERT INTO fridge (name,quantity,unit,expiry_date) VALUES (?,?,?,?)''',(ingredient.name,ingredient.quantity,ingredient.unit,ingredient.expiry_date))
+            self.cursor.execute('''SELECT quantity FROM fridge WHERE name = ?''',(ingredient.name,))
+            item = self.cursor.fetchone()
+            if item:
+                new_quantity = item[0] + ingredient.quantity
+                self.cursor.execute('''UPDATE fridge SET quantity = ? WHERE name = ?''',(new_quantity,ingredient.name))
+            else:
+                self.cursor.execute('''INSERT INTO fridge (name,quantity,unit,expiry_date) VALUES (?,?,?,?)''',(ingredient.name,ingredient.quantity,ingredient.unit,ingredient.expiry_date))
             self.conn.commit()
         except sqlite3.Error as e:
             print(f"Error adding item {e}")
@@ -72,6 +101,8 @@ class Database:
             print(f"Error deleting item {e}")
 
     #Delete recipe
+        
+
 
     def close(self):
         if self.conn:
@@ -87,7 +118,7 @@ class Database:
             else:
                 output += "\nNo items in fridge\n"
 
-            output += "\nRecipes:\n"
+            output += "\n\nRecipes:\n"
             
             self.cursor.execute('''SELECT * FROM recipes''')
             rows = self.cursor.fetchall()
@@ -96,7 +127,7 @@ class Database:
             else:
                 output += "\nNo recipes in database\n"
             
-            output += "\nIngredients:\n"        
+            output += "\n\nIngredients:\n"        
 
             self.cursor.execute('''SELECT * FROM ingredients''')
             rows = self.cursor.fetchall()
@@ -115,6 +146,19 @@ class Database:
             self.conn = sqlite3.connect(self.db_name)
             self.cursor = self.conn.cursor()
             self.cursor.execute(f'''DELETE FROM {table}''')
+            if table == "recipes":
+                self.cursor.execute('''DELETE FROM ingredients''')
             self.conn.commit()
         except sqlite3.Error as e:
             print(f"Error clearing table {e}")
+
+    def delete_recipe(self,recipe):
+        try:
+            self.cursor.execute('''SELECT id FROM recipes WHERE name = ?''',(recipe.name,))
+            result = self.cursor.fetchone()
+            recipe_id = result[0]
+            self.cursor.execute('''DELETE FROM recipes WHERE name = ?''',(recipe.name,))
+            self.cursor.execute('''DELETE FROM ingredients WHERE recipe_id = ?''',(recipe_id,))
+            self.conn.commit()
+        except sqlite3.Error as e:
+            print(f"Error deleting recipe {e}")
